@@ -15,7 +15,7 @@ use Mautic\CoreBundle\Form\Type\YesNoButtonGroupType;
 use Mautic\PluginBundle\Integration\AbstractSsoFormIntegration;
 use Mautic\UserBundle\Entity\User;
 use Mautic\UserBundle\Form\Type\RoleListType;
-use Symfony\Component\Ldap\LdapClient;
+use Symfony\Component\Ldap\Ldap;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 
 /**
@@ -96,6 +96,7 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         $ssl         = (bool) $settings['ssl'];
         $startTls    = (bool) $settings['starttls'];
         $ldapVersion = !empty($settings['version']) ? (int) $settings['version'] : 3;
+        $encryption  = 'none';
 
         if ('ldap://' === substr($hostname, 0, 7)) {
             $hostname = str_replace('ldap://', '', $hostname);
@@ -103,6 +104,12 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             $ssl      = true;
             $startTls = false;
             $hostname = str_replace('ldaps://', '', $hostname);
+        }
+
+        if ($ssl === true) {
+            $encryption = 'ssl';
+        } else if ($startTls === true) {
+            $encryption = 'tls';
         }
 
         if (empty($port)) {
@@ -114,7 +121,12 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         }
 
         if (!empty($hostname) && !empty($parameters['login'])) {
-            $ldap = new LdapClient($hostname, $port, $ldapVersion, $ssl, $startTls);
+            $ldap = Ldap::create('ext_ldap', [
+                'host' => $hostname,
+                'port' => $port,
+                'version' => $ldapVersion,
+                'encryption' => $encryption
+            ]);
 
             $response = $this->ldapUserLookup($ldap, $settings, $parameters);
 
@@ -157,12 +169,16 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             $query     = "(&($userquery)$query)"; // original $query already has brackets!
 
             $ldap->bind($user_dn, $password);
-            $response = $ldap->find($base_dn, $query);
+            $ldapquery = $ldap->query($base_dn, $query);
+            $entries = $ldapquery->execute()->toArray(); // Entry[]
+            $response = array();
+            foreach ($entries as $entry) {
+                $response[] = $entry->getAttributes();
+            }
+
             // If we reach this far, we expect to have found something
             // and join the settings to the response to retrieve user fields
-            if (is_array($response)) {
-                $response['settings'] = $settings;
-            }
+            $response['settings'] = $settings;
         } catch (\Exception $e) {
             $response = [
                 'errors' => [
