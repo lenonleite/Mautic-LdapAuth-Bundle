@@ -98,7 +98,6 @@ class ConfigType extends AbstractType
                             'ldaps://' === substr($options['data']['ldap_auth_host'], 0, 8)
                             : false
                     ),
-                'empty_data' => false,
             ]
         );
         $builder->add(
@@ -114,7 +113,6 @@ class ConfigType extends AbstractType
                 'data' => isset($options['data']['ldap_auth_starttls']) ?
                     (bool) $options['data']['ldap_auth_starttls']
                     : false,
-                'empty_data' => false,
             ]
         );
 
@@ -249,7 +247,6 @@ class ConfigType extends AbstractType
                 'data' => isset($options['data']['ldap_auth_isactivedirectory']) ?
                     (bool) $options['data']['ldap_auth_isactivedirectory']
                     : false,
-                'empty_data' => false,
                 'required'   => false,
             ]
         );
