@@ -1,22 +1,16 @@
 <?php
-/**
- * @package     Mautic
- * @copyright   2019 Monogramm. All rights reserved
- * @author      Monogramm
- * @link        https://www.monogramm.io
- * @license     GNU/AGPLv3 http://www.gnu.org/licenses/agpl.html
- */
 
 namespace MauticPlugin\MauticLdapAuthBundle\Integration;
 
+use Mautic\CoreBundle\Form\Type\YesNoButtonGroupType;
 use Mautic\PluginBundle\Integration\AbstractSsoFormIntegration;
 use Mautic\UserBundle\Entity\User;
-
-use Symfony\Component\Ldap\LdapClient;
+use Mautic\UserBundle\Form\Type\RoleListType;
+use Symfony\Component\Ldap\Ldap;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 
 /**
- * Class LdapAuthIntegration
+ * Class LdapAuthIntegration.
  */
 class LdapAuthIntegration extends AbstractSsoFormIntegration
 {
@@ -28,28 +22,20 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         return 'LdapAuth';
     }
 
-    /**
-     * @return string
-     */
-    public function getDisplayName()
+    public function getDisplayName(): string
     {
         return 'LDAP Authentication';
     }
 
-    /**
-     * @return string
-     */
-    public function getAuthenticationType()
+    public function getAuthenticationType(): string
     {
         return 'none';
     }
 
     /**
      * {@inheritdoc}
-     *
-     * @return array
      */
-    public function getRequiredKeyFields()
+    public function getRequiredKeyFields(): array
     {
         return [
         ];
@@ -57,10 +43,8 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 
     /**
      * {@inheritdoc}
-     *
-     * @return array
      */
-    public function getSecretKeys()
+    public function getSecretKeys(): array
     {
         return [
         ];
@@ -68,10 +52,8 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 
     /**
      * {@inheritdoc}
-     *
-     * @return string
      */
-    public function getAuthTokenKey()
+    public function getAuthTokenKey(): string
     {
         return '';
     }
@@ -84,21 +66,23 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
      *
      * @return bool|array false if no error; otherwise the error string
      *
-     * @throws \Symfony\Component\Security\Core\Exception\AuthenticationException
+     * @throws AuthenticationException
      */
-    public function authCallback($settings = [], $parameters = [])
+    public function authCallback($settings = [], $parameters = []): bool|array
     {
-        $hostname = $settings['hostname'];
-        $port = (int) $settings['port'];
-        $ssl = (bool) $settings['ssl'];
-        $startTls = (bool) $settings['starttls'];
+        $hostname    = $settings['hostname'];
+        $port        = (int) $settings['port'];
+        $ssl         = (bool) $settings['ssl'];
+        $startTls    = (bool) $settings['starttls'];
         $ldapVersion = !empty($settings['version']) ? (int) $settings['version'] : 3;
+        $baseHost    = 'ldap://';
 
-        if (substr($hostname, 0, 7) === 'ldap://') {
+        if ('ldap://' === substr($hostname, 0, 7)) {
             $hostname = str_replace('ldap://', '', $hostname);
-        } elseif (substr($hostname, 0, 8) === 'ldaps://') {
-            $ssl = true;
+        } elseif ('ldaps://' === substr($hostname, 0, 8)) {
+            $ssl      = true;
             $startTls = false;
+            $baseHost = 'ldaps://';
             $hostname = str_replace('ldaps://', '', $hostname);
         }
 
@@ -111,7 +95,12 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         }
 
         if (!empty($hostname) && !empty($parameters['login'])) {
-            $ldap = new LdapClient($hostname, $port, $ldapVersion, $ssl, $startTls);
+            $ldap = Ldap::create(
+                'ext_ldap',
+                [
+                    'connection_string' => "$baseHost.$hostname:$port",
+                ]
+            );
 
             $response = $this->ldapUserLookup($ldap, $settings, $parameters);
 
@@ -124,23 +113,23 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
     /**
      * LDAP authentication and lookup user information.
      *
-     * @param \Symfony\Component\Ldap\LdapClient $ldap
+     * @param Ldap  $ldap
      * @param array $settings
      * @param array $parameters
      *
-     * @return array array containing the LDAP lookup results or error message(s).
+     * @return array array containing the LDAP lookup results or error message(s)
      *
-     * @throws \Symfony\Component\Security\Core\Exception\AuthenticationException
+     * @throws AuthenticationException
      */
     private function ldapUserLookup($ldap, $settings = [], $parameters = [])
     {
-        $base_dn = $settings['base_dn'];
-        $userKey = $settings['user_key'];
-        $query = $settings['user_query'];
-        $is_ad = $settings['is_ad'];
+        $base_dn   = $settings['base_dn'];
+        $userKey   = $settings['user_key'];
+        $query     = $settings['user_query'];
+        $is_ad     = $settings['is_ad'];
         $ad_domain = $settings['ad_domain'];
 
-        $login = $parameters['login'];
+        $login    = $parameters['login'];
         $password = $parameters['password'];
 
         try {
@@ -151,26 +140,26 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             }
 
             $userquery = "$userKey=$login";
-            $query = "(&($userquery)$query)"; // original $query already has brackets!
+            $query     = "(&($userquery)$query)"; // original $query already has brackets!
 
             $ldap->bind($dn, $password);
-            $response = $ldap->find($base_dn, $query);
+            $response = $ldap->query($base_dn, $query)->execute();
             // If we reach this far, we expect to have found something
             // and join the settings to the response to retrieve user fields
             if (is_array($response)) {
                 $response['settings'] = $settings;
             }
         } catch (\Exception $e) {
-            $response = array(
-                'errors' => array(
-                    $this->factory->getTranslator()->trans(
+            $response = [
+                'errors' => [
+                    $this->getTranslator()->trans(
                         'mautic.integration.sso.ldapauth.error.authentication_issue',
                         [],
                         'flashes'
                     ),
-                    $e->getMessage()
-                )
-            );
+                    $e->getMessage(),
+                ],
+            ];
         }
 
         return $response;
@@ -179,12 +168,9 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
     /**
      * {@inheritdoc}
      *
-     * @param $data
-     * @param $tokenOverride
-     *
      * @return bool|array false if no error; otherwise the error string
      *
-     * @throws \Symfony\Component\Security\Core\Exception\AuthenticationException
+     * @throws AuthenticationException
      */
     public function extractAuthKeys($data, $tokenOverride = null)
     {
@@ -193,15 +179,15 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 
         // Parse the response
         if (is_array($data) && !empty($data) && isset($data['settings'])) {
-            return array(
-                'data' => $data[0],
-                'settings' => $data['settings']
-            );
+            return [
+                'data'     => $data[0],
+                'settings' => $data['settings'],
+            ];
         }
 
         $error = $this->getErrorsFromResponse($data);
         if (empty($error)) {
-            $error = $this->factory->getTranslator()->trans(
+            $error = $this->getTranslator()->trans(
                 'mautic.integration.error.genericerror',
                 [],
                 'flashes'
@@ -212,7 +198,7 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         if (!$fallback) {
             throw new AuthenticationException($error);
         } else {
-            $this->getLogger()->addError($error);
+            $this->getLogger()->error($error);
         }
     }
 
@@ -228,14 +214,14 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
     public function getUser($response)
     {
         if (is_array($response) && isset($response['settings']) && isset($response['data'])) {
-            $settings = $response['settings'];
-            $userKey = $settings['user_key'];
-            $userEmail = $settings['user_email'];
+            $settings      = $response['settings'];
+            $userKey       = $settings['user_key'];
+            $userEmail     = $settings['user_email'];
             $userFirstname = $settings['user_firstname'];
-            $userLastname = $settings['user_lastname'];
-            $userFullname = $settings['user_fullname'];
+            $userLastname  = $settings['user_lastname'];
+            $userFullname  = $settings['user_fullname'];
 
-            $data = $response['data'];
+            $data  = $response['data'];
             $login = self::arrayGet($data, $userKey, [null])[0];
             $email = self::arrayGet($data, $userEmail, [null])[0];
 
@@ -245,7 +231,7 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             }
 
             $firstname = self::arrayGet($data, $userFirstname, [null])[0];
-            $lastname = self::arrayGet($data, $userLastname, [null])[0];
+            $lastname  = self::arrayGet($data, $userLastname, [null])[0];
 
             if ((empty($firstname) || empty($lastname)) && isset($data[$userFullname])) {
                 $names = explode(' ', $data[$userFullname][0]);
@@ -276,11 +262,11 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
     /**
      * Get a value from an array or return default value if not set.
      *
-     * @param array $array source array
-     * @param string $key key to get from array
-     * @param mixed $default default value if key not set in array
+     * @param array  $array   source array
+     * @param string $key     key to get from array
+     * @param mixed  $default default value if key not set in array
      *
-     * @return mixed a value from array or default value.
+     * @return mixed a value from array or default value
      */
     private function arrayGet($array, $key, $default = null)
     {
@@ -303,19 +289,19 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
      * {@inheritdoc}
      *
      * @param Form|\Symfony\Component\Form\FormBuilder $builder
-     * @param array $data
-     * @param string $formArea
+     * @param array                                    $data
+     * @param string                                   $formArea
      */
-    public function appendToForm(&$builder, $data, $formArea)
+    public function appendToForm(&$builder, $data, $formArea): void
     {
-        if ($formArea == 'features') {
+        if ('features' == $formArea) {
             $builder->add(
                 'auth_fallback',
-                'yesno_button_group',
+                YesNoButtonGroupType::class,
                 [
                     'label' => 'mautic.integration.sso.ldapauth.auth_fallback',
-                    'data' => (isset($data['auth_fallback'])) ? (bool) $data['auth_fallback'] : true,
-                    'attr' => [
+                    'data'  => (isset($data['auth_fallback'])) ? (bool) $data['auth_fallback'] : true,
+                    'attr'  => [
                         'tooltip' => 'mautic.integration.sso.ldapauth.auth_fallback.tooltip',
                     ],
                 ]
@@ -323,11 +309,11 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 
             $builder->add(
                 'auto_create_user',
-                'yesno_button_group',
+                YesNoButtonGroupType::class,
                 [
                     'label' => 'mautic.integration.sso.auto_create_user',
-                    'data' => (isset($data['auto_create_user'])) ? (bool) $data['auto_create_user'] : false,
-                    'attr' => [
+                    'data'  => (isset($data['auto_create_user'])) ? (bool) $data['auto_create_user'] : false,
+                    'attr'  => [
                         'tooltip' => 'mautic.integration.sso.auto_create_user.tooltip',
                     ],
                 ]
@@ -335,12 +321,12 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 
             $builder->add(
                 'new_user_role',
-                'role_list',
+                RoleListType::class,
                 [
-                    'label' => 'mautic.integration.sso.new_user_role',
+                    'label'      => 'mautic.integration.sso.new_user_role',
                     'label_attr' => ['class' => 'control-label'],
-                    'attr' => [
-                        'class' => 'form-control',
+                    'attr'       => [
+                        'class'   => 'form-control',
                         'tooltip' => 'mautic.integration.sso.new_user_role.tooltip',
                     ],
                 ]
