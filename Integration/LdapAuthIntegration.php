@@ -103,11 +103,32 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             );
 
             $response = $this->ldapUserLookup($ldap, $settings, $parameters);
-
+            if(!$this->checkLdapUserLookup($response)) {
+                return false;
+            }
             return $this->extractAuthKeys($response);
         }
 
         return false;
+    }
+
+    /**
+     * Check if the LDAP user lookup was successful.
+     *
+     * @param array $response
+     *
+     * @return bool
+     */
+    private function checkLdapUserLookup($response): bool
+    {
+        if (is_array($response) && !empty($response) && isset($response['errors'])) {
+            foreach ($response['errors'] as $error) {
+                $this->logger->warning('LDAP Auth: '.$error);
+                $this->logger->error('LDAP Auth: '.$error);
+            }
+            return false;
+        }
+        return true;
     }
 
     /**
