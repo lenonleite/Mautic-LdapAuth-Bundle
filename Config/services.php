@@ -15,9 +15,7 @@ return function (ContainerConfigurator $configurator): void {
     $excludes = [
     ];
 
-        $services->load('MauticPlugin\\MauticLdapAuthBundle\\', '../')
-            ->exclude('../{'.implode(',', MauticCoreExtension::DEFAULT_EXCLUDES).'}')
-            ->alias('mautic.integration.ldapauth', MauticPlugin\MauticLdapAuthBundle\Integration\LdapAuthIntegration::class)
-            ->alias('mautic.integration.ldapformauth', MauticPlugin\MauticLdapAuthBundle\Integration\LdapFormAuthIntegration::class);
-    //        ->exclude('../{'.implode(',', array_merge(MauticCoreExtension::DEFAULT_EXCLUDES, $excludes)).'}');
+    $services->load('MauticPlugin\\MauticLdapAuthBundle\\', '../')
+        ->exclude('../{'.implode(',', MauticCoreExtension::DEFAULT_EXCLUDES).'}')
+        ->alias('mautic.integration.ldapauth', MauticPlugin\MauticLdapAuthBundle\Integration\LdapAuthIntegration::class);
 };

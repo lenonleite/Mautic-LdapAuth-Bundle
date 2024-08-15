@@ -14,21 +14,17 @@ use Mautic\LeadBundle\Model\DoNotContact as DoNotContactModel;
 use Mautic\LeadBundle\Model\FieldModel;
 use Mautic\LeadBundle\Model\LeadModel;
 use Mautic\PluginBundle\Integration\AbstractSsoFormIntegration;
-use Mautic\PluginBundle\Integration\AbstractSsoServiceIntegration;
 use Mautic\PluginBundle\Model\IntegrationEntityModel;
 use Mautic\UserBundle\Entity\User;
 use Mautic\UserBundle\Form\Type\RoleListType;
 use Mautic\UserBundle\Model\UserModel;
 use Mautic\UserBundle\Security\Provider\UserProvider;
-use MauticPlugin\MauticLdapAuthBundle\Integration\Form;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Ldap\Ldap;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasher;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -37,17 +33,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * Class LdapAuthIntegration.
  */
 class LdapAuthIntegration extends AbstractSsoFormIntegration
-//class LdapAuthIntegrationBackup extends AbstractSsoServiceIntegration
 {
     public const NAME = 'LdapAuth';
-
-//    protected CoreParametersHelper $coreParametersHelper;
-
-//    protected UserProvider $userProvider;
-
-//    protected UserPasswordHasher $hasher;
-//
-//    protected UserModel $userModel;
 
     public function __construct(
         protected EventDispatcherInterface $dispatcher,
@@ -70,7 +57,6 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         protected UserModel $userModel,
         protected CoreParametersHelper $coreParametersHelper,
         protected UserProvider $userProvider
-
     ) {
         parent::__construct(
             $this->dispatcher,
@@ -89,16 +75,7 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             $this->fieldModel,
             $this->integrationEntityModel,
             $this->doNotContact);
-
-
     }
-//    public function __construct(CoreParametersHelper $coreParametersHelper, UserProvider $userProvider, UserPasswordHasher $hasher, UserModel $userModel)
-//    {
-//        $this->coreParametersHelper = $coreParametersHelper;
-//        $this->userProvider = $userProvider;
-//        $this->hasher = $hasher;
-//        $this->userModel = $userModel;
-//    }
 
     /**
      * @return string
@@ -145,22 +122,6 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
     }
 
     /**
-     * Set in the UserSubscriber.
-     */
-    public function setCoreParametersHelper(CoreParametersHelper $coreParametersHelper): void
-    {
-        $this->coreParametersHelper = $coreParametersHelper;
-    }
-
-    /**
-     * Set in the UserSubscriber.
-     */
-    public function setUserProvider(UserProvider $userProvider): void
-    {
-        $this->userProvider = $userProvider;
-    }
-
-    /**
      * {@inheritdoc}
      *
      * @param array $settings
@@ -172,19 +133,15 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
      */
     public function authCallback($settings = [], $parameters = []): bool|array
     {
-//        dd($settings,$parameters);
         $hostname    = $settings['hostname'];
         $port        = (int) $settings['port'];
         $ssl         = (bool) $settings['ssl'];
-        $startTls    = (bool) $settings['starttls'];
-        $ldapVersion = !empty($settings['version']) ? (int) $settings['version'] : 3;
         $baseHost    = 'ldap://';
 
         if ('ldap://' === substr($hostname, 0, 7)) {
             $hostname = str_replace('ldap://', '', $hostname);
         } elseif ('ldaps://' === substr($hostname, 0, 8)) {
             $ssl      = true;
-            $startTls = false;
             $baseHost = 'ldaps://';
             $hostname = str_replace('ldaps://', '', $hostname);
         }
@@ -199,7 +156,7 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 
         if (!empty($hostname) && !empty($parameters['login'])) {
             $connectionString = "$baseHost.$hostname:$port";
-            if(filter_var($hostname, FILTER_VALIDATE_IP) !== false) {
+            if (false !== filter_var($hostname, FILTER_VALIDATE_IP)) {
                 $connectionString = "$baseHost$hostname:$port";
             }
 
@@ -211,9 +168,10 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             );
 
             $response = $this->ldapUserLookup($ldap, $settings, $parameters);
-            if(!$this->checkLdapUserLookup($response)) {
+            if (!$this->checkLdapUserLookup($response)) {
                 return false;
             }
+
             return $this->extractAuthKeys($response);
         }
 
@@ -224,8 +182,6 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
      * Check if the LDAP user lookup was successful.
      *
      * @param array $response
-     *
-     * @return bool
      */
     private function checkLdapUserLookup($response): bool
     {
@@ -234,8 +190,10 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
                 $this->logger->warning('LDAP Auth: '.$error);
                 $this->logger->error('LDAP Auth: '.$error);
             }
+
             return false;
         }
+
         return true;
     }
 
@@ -255,7 +213,6 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         $base_dn   = $settings['base_dn'];
         $userKey   = $settings['user_key'];
         $query     = $settings['user_query'];
-        $query2     = $settings['user_query'];
         $is_ad     = $settings['is_ad'];
         $ad_domain = $settings['ad_domain'];
 
@@ -271,35 +228,17 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 
             $userquery = "$userKey=$login";
             $query     = "(&($userquery)$query)"; // original $query already has brackets!
-//            $query     = "$userquery"; // original $query already has brackets!
-            $dn2 = 'cn=admin,dc=example,dc=org';
-//            dump($dn,$password,$query);
-//            dump($dn,$query,$password);
             $ldap->bind($dn, $password);
-//            dd($ldap);
-            $base_dn2 = 'dc=example,dc=org';
-//            dump($dn,$base_dn,$query);
-            $response = $ldap->query($dn, $query)->execute();
-//            dump($response);
-//            foreach ($response as $entry) {
-//                dump($entry->getDn(),$entry->getAttributes(),'entry',$entry);
-//            }
-            $result = [];
+            $response           = $ldap->query($dn, $query)->execute();
+            $result             = [];
             $result['settings'] = $settings;
-            if($response->count() >= 0) {
+            if ($response->count() >= 0) {
                 foreach ($response as $key => $entry) {
-                    $result[$key] = $entry->getAttributes();
+                    $result[$key]             = $entry->getAttributes();
                     $result[$key]['password'] = $password;
                 }
             }
 
-//            foreach ( as $iterator){
-//                $result[] = $iterator->getAttributes();
-//            }
-//            dd($response,$response->toArray());
-//            $result = $response->toArray();
-//            dump($result,'result');
-//            dd($response->toArray());
             // If we reach this far, we expect to have found something
             // and join the settings to the response to retrieve user fields
         } catch (\Exception $e) {
@@ -313,7 +252,6 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
                     $e->getMessage(),
                 ],
             ];
-//            dd($response);
         }
 
         return $result;
@@ -329,10 +267,7 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
     public function extractAuthKeys($data, $tokenOverride = null)
     {
         // Prepare the keys for extraction such as renaming, setting expiry, etc
-
         $data = $this->prepareResponseForExtraction($data);
-
-//        dd($data,'=====');
 
         // Parse the response
         if (is_array($data) && !empty($data) && isset($data['settings'])) {
@@ -353,9 +288,9 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         $fallback = $this->shouldFallbackToLocalAuth();
         if (!$fallback) {
             throw new AuthenticationException($error);
-        } else {
-            $this->getLogger()->error($error);
         }
+
+        $this->getLogger()->error($error);
     }
 
     public function getErrorsFromResponse($data)
@@ -363,8 +298,8 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
         if (is_string($data) && str_contains($data, 'Invalid credentials') && !str_contains($data, 'search result')) {
             return $data;
         }
-        return '';
 
+        return '';
     }
 
     /**
@@ -378,7 +313,6 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
      */
     public function getUser($response)
     {
-
         if (is_array($response) && isset($response['settings']) && isset($response['data'])) {
             $settings      = $response['settings'];
             $userKey       = $settings['user_key'];
@@ -386,7 +320,7 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             $userFirstname = $settings['user_firstname'];
             $userLastname  = $settings['user_lastname'];
             $userFullname  = $settings['user_fullname'];
-            $data  = $response['data'];
+            $data          = $response['data'];
 
             $login = self::arrayGet($data, $userKey, [null])[0];
             $email = self::arrayGet($data, $userEmail, [null])[0];
@@ -399,7 +333,6 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             $firstname = self::arrayGet($data, $userFirstname, [null])[0];
             $lastname  = self::arrayGet($data, $userLastname, [null])[0];
 
-
             if ((empty($firstname) || empty($lastname)) && isset($data[$userFullname])) {
                 $names = explode(' ', $data[$userFullname][0]);
                 if (count($names) > 1) {
@@ -411,21 +344,10 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
                 }
             }
 
-//            dd($email,$data);
-            $user = $this->em->getRepository(\Mautic\UserBundle\Entity\User::class)->findOneBy(['username' => $login]);
-            if(!empty($user)) {
+            $user = $this->em->getRepository(User::class)->findOneBy(['username' => $login]);
+            if (!empty($user)) {
                 return $user;
             }
-//            dd($settings,$data,$user);
-//            $mauticUser
-//                ->setUsername($this->getStringValue('auth0_username', 'email'))
-//                ->setEmail($this->getStringValue('auth0_email', 'email'))
-//                ->setFirstName($this->getStringValue('auth0_firstName', 'given_name'))
-//                ->setLastName($this->getStringValue('auth0_lastName', 'family_name'))
-//                ->setTimezone($this->getStringValue('auth0_timezone'))
-//                ->setLocale($this->getStringValue('auth0_locale'))
-//                ->setSignature($this->getStringValue('auth0_signature'))
-//                ->setPosition($this->getStringValue('auth0_position'));
 
             $user = new User();
             $user->setUsername($login)
@@ -434,15 +356,10 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
                 ->setLastName($lastname)
                 ->setRole(
                     $this->getUserRole()
-                )->setIsPublished(true)
-                ->setActivePermissions([])
-            ->setTimezone('UTC')
-            ->setLocale('en')
-            ->setSignature('')
-            ->setPosition('');
-            $password = $this->userModel->checkNewPassword($user,$this->hasher, $response['data']['password']);
+                )->setIsPublished(true);
+            $password = $this->userModel->checkNewPassword($user, $this->hasher, $response['data']['password']);
             $user->setPassword($password);
-//            dd($user);
+
             return $user;
         }
 
@@ -522,21 +439,5 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
                 ]
             );
         }
-    }
-
-    /**
-     * Set the callback URL to sso_login.
-     */
-    public function getAuthCallbackUrl(): string
-    {
-        return sprintf(
-            '%s://%s%s',
-            $this->router->getContext()->getScheme(),
-            $this->router->getContext()->getHost(),
-            $this->router->generate('mautic_sso_login_check',
-                ['integration' => $this->getName()],
-                UrlGeneratorInterface::ABSOLUTE_PATH
-            )
-        );
     }
 }
