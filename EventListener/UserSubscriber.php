@@ -10,24 +10,23 @@ use Mautic\UserBundle\UserEvents;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\RouterInterface;
+use MauticPlugin\MauticLdapAuthBundle\Integration\LdapFormAuthIntegration;
 
 /**
  * Class UserSubscriber.
  */
 class UserSubscriber implements EventSubscriberInterface
 {
-    /**
-     * @var CoreParametersHelper
-     */
-    private $parametersHelper;
 
     private $supportedServices = [
+        'LdapFormAuth',
         'LdapAuth',
+
     ];
 
-    public function __construct(CoreParametersHelper $parametersHelper)
+    public function __construct(private readonly CoreParametersHelper $parametersHelper, private readonly RouterInterface $router)
     {
-        $this->parametersHelper = $parametersHelper;
     }
 
     /**
@@ -36,8 +35,71 @@ class UserSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents()
     {
         return [
-            UserEvents::USER_FORM_AUTHENTICATION => ['onUserFormAuthentication', 0],
+//            UserEvents::USER_FORM_AUTHENTICATION => ['onUserFormAuthentication', 0],
+            UserEvents::USER_FORM_AUTHENTICATION => ['onUserAuthentication2', 10],
+            UserEvents::USER_FORM_POST_LOCAL_PASSWORD_AUTHENTICATION => ['onUserFormPostLocalAuthentication', 10],
+//            UserEvents::USER_PRE_AUTHENTICATION  => ['onUserAuthentication', 0],
         ];
+    }
+
+    public function onUserAuthentication2(AuthenticationEvent $event){
+        $username = $event->getUsername();
+        $password = $event->getToken()->getCredentials();
+
+        $username = $event->getRequest()->get('_username');
+        $password = $event->getRequest()->get('_password');
+        $integration = null;
+        $result      = false;
+        if ($authService = $event->getAuthenticatingService()) {
+            if (in_array($authService, $this->supportedServices)
+                && $integration = $event->getIntegration($authService)) {
+                $result = $this->authenticateService($integration, $username, $password);
+            }
+        } else {
+            foreach ($this->supportedServices as $supportedService) {
+                if ($integration = $event->getIntegration($supportedService)) {
+                    $authService = $supportedService;
+                    $result      = $this->authenticateService($integration, $username, $password);
+                    break;
+                }
+            }
+        }
+
+        if ($integration && $result instanceof User) {
+            $event->setIsAuthenticated($authService, $result, $integration->shouldAutoCreateNewUser());
+        } elseif ($result instanceof Response) {
+            $event->setResponse($result);
+        } // else do nothing
+    }
+
+    public function onUserAuthentication(AuthenticationEvent $event)
+    {
+
+        $username = $event->getRequest()->get('_username');
+        $password = $event->getRequest()->get('_password');
+        $authenticatingService = $event->getAuthenticatingService();
+
+        if(!in_array(LdapFormAuthIntegration::NAME, $this->supportedServices)) {
+            return;
+        }
+
+        $integration = $event->getIntegration($authenticatingService);
+
+        if (!$integration instanceof LdapFormAuthIntegration) {
+            throw new \RuntimeException('The integration is not found.');
+        }
+
+        $integration->setCoreParametersHelper($this->parametersHelper);
+        $integration->setUserProvider($event->getUserProvider());
+
+        $result = $this->authenticateService($integration, $username, $password);
+
+        if ($integration && $result instanceof User) {
+            $event->setIsAuthenticated(LdapFormAuthIntegration::NAME, $result, $integration->shouldAutoCreateNewUser());
+        } elseif ($result instanceof Response) {
+            $event->setResponse($result);
+        }
+
     }
 
     /**
@@ -47,8 +109,9 @@ class UserSubscriber implements EventSubscriberInterface
      */
     public function onUserFormAuthentication(AuthenticationEvent $event)
     {
-        $username = $event->getUsername();
-        $password = $event->getToken()->getCredentials();
+        $username = $event->getRequest()->get('_username');
+        $password = $event->getRequest()->get('_password');
+
 
         $integration = null;
         $result      = false;
@@ -66,7 +129,7 @@ class UserSubscriber implements EventSubscriberInterface
                 }
             }
         }
-
+//        dd($integration, $result);
         if ($integration && $result instanceof User) {
             $event->setIsAuthenticated($authenticatingService, $result, $integration->shouldAutoCreateNewUser());
         } elseif ($result instanceof Response) {
@@ -80,7 +143,7 @@ class UserSubscriber implements EventSubscriberInterface
      *
      * @return bool|RedirectResponse
      */
-    private function authenticateService(AbstractSsoFormIntegration $integration, $username, $password)
+    private function authenticateService($integration, $username, $password)
     {
         $settings = [
             'hostname'      => $this->parametersHelper->get('ldap_auth_host'),
@@ -107,10 +170,39 @@ class UserSubscriber implements EventSubscriberInterface
             'password'  => $password,
         ];
 
+
         if ($authenticatedUser = $integration->ssoAuthCallback($settings, $parameters)) {
             return $authenticatedUser;
         }
 
+//dd($integration->ssoAuthCallback($settings, $parameters));
         return false;
+    }
+
+    public function onUserFormPostLocalAuthentication(AuthenticationEvent $event): void
+    {
+        $event->stopPropagation();
+    }
+
+//    private function authenticateService2(LeuchtfeuerAuth0Integration $integration, bool $loginCheck)
+//    {
+//        if ($loginCheck) {
+//            /** @var false|User $authenticatedUser */
+//            $authenticatedUser = $integration->ssoAuthCallback();
+//            if ($authenticatedUser instanceof User) {
+//                return $authenticatedUser;
+//            }
+//        } else {
+//            $loginUrl = $integration->getAuthLoginUrl();
+//            $response = new RedirectResponse($loginUrl);
+//
+//            return $response;
+//        }
+//
+//        return false;
+//    }
+    public function shouldAutoCreateNewUser(): bool
+    {
+        return true;
     }
 }
