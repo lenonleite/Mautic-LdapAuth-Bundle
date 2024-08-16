@@ -4,17 +4,33 @@
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Monogramm/MauticLdapAuthBundle/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/Monogramm/MauticLdapAuthBundle/?branch=master)
 [![mautic](https://img.shields.io/badge/mautic-%3E%3D%202.11-blue.svg)](https://www.mautic.org/mixin/ldapauth/)
 
-# Mautic LDAP Authentication Plugin
+# Description - Mautic LDAP Authentication Plugin
 
-This Plugin enables LDAP authentication for mautic 2 and newer. Even though Mautic offers SAML authentication, the main objective is to offer an alternative to those who do not want to setup SSO in their company just for mautic :smiley:
+This Plugin enables LDAP authentication for mautic 2 and newer, including mautic 5. Even though Mautic offers SAML authentication, the main objective is to offer an alternative to those who do not want to setup SSO in their company just for mautic :smiley:
 
-## Installation via composer (preferred)
-Execute `composer require monogramm/mautic-ldap-auth-bundle` in the main directory of the mautic installation.
+## Installation
+### Composer
+This plugin can be installed through composer.
 
-## Installation via .zip
-1. Download the [master.zip](https://github.com/Monogramm/MauticLdapAuthBundle/archive/master.zip), extract it into the `plugins/` directory and rename the new directory to `MauticLdapAuthBundle`.
-2. Install `symfony/ldap` requirements with composer: `composer require symfony/ldap:~2.8`
-3. Clear the cache via console command `php app/console cache:clear --env=prod` (might take a while) *OR* manually delete the `app/cache/prod` directory.
+### Manual install
+Alternatively, it can be installed manually, following the usual steps:
+
+* Download the plugin
+* Unzip to the Mautic `plugins` directory
+* Rename folder to `MauticLdapAuthBundle`
+
+-
+* In the Mautic backend, go to the `Plugins` page as an administrator
+* Click on the `Install/Upgrade Plugins` button to install the Plugin.
+
+OR
+
+* If you have shell access, execute `php bin\console cache:clear` and `php bin\console mautic:plugins:reload` to install the plugins.
+
+## Plugin Activation and Configuration
+1. Go to `Plugins` page
+2. Click on the `Company Points` plugin
+3. ENABLE the plugin
 
 ## Configuration
 Navigate to the Plugins page and click "Install/Upgrade Plugins". You should now see a "LDAP Auth" plugin.
