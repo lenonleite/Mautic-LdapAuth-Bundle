@@ -16,11 +16,11 @@ This plugin can be installed through composer.
 Alternatively, it can be installed manually, following the usual steps:
 
 * Download the plugin
+* Install `symfony/ldap` requirements with composer: `composer require symfony/ldap`
 * Unzip to the Mautic `plugins` directory
 * Rename folder to `MauticLdapAuthBundle`
-
--
 * In the Mautic backend, go to the `Plugins` page as an administrator
+
 * Click on the `Install/Upgrade Plugins` button to install the Plugin.
 
 OR
