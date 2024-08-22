@@ -36,6 +36,8 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 {
     public const NAME = 'LdapAuth';
 
+    public const LOCALHOST = 'localhost';
+
     public function __construct(
         protected EventDispatcherInterface $dispatcher,
         CacheStorageHelper $cacheStorageHelper,
@@ -156,7 +158,8 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
 
         if (!empty($hostname) && !empty($parameters['login'])) {
             $connectionString = "$baseHost.$hostname:$port";
-            if (false !== filter_var($hostname, FILTER_VALIDATE_IP)) {
+
+            if (false !== filter_var($hostname, FILTER_VALIDATE_IP) || $hostname === self::LOCALHOST) {
                 $connectionString = "$baseHost$hostname:$port";
             }
 
