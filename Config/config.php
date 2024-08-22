@@ -3,9 +3,8 @@
 return [
     'name'        => 'LdapAuth',
     'description' => 'Enables LDAP authentication',
-    'version'     => '1.0',
+    'version'     => '4.0',
     'author'      => 'Monogramm',
-
     'services'    => [
         'events' => [
             'mautic.ldapauth.user.subscriber' => [
