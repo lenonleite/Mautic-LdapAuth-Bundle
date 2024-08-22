@@ -443,4 +443,8 @@ class LdapAuthIntegration extends AbstractSsoFormIntegration
             );
         }
     }
+    public function getIcon(): string
+    {
+        return 'plugins/MauticLdapAuthBundle/Assets/img/icon.png';
+    }
 }

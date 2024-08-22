@@ -29,7 +29,7 @@ OR
 
 ## Plugin Activation and Configuration
 1. Go to `Plugins` page
-2. Click on the `Company Points` plugin
+2. Click on the `LDAP Authentication` plugin
 3. ENABLE the plugin
 
 ## Configuration
