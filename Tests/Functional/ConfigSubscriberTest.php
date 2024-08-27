@@ -9,11 +9,6 @@ use Symfony\Component\HttpFoundation\Request;
 
 class ConfigSubscriberTest extends MauticMysqlTestCase
 {
-    //    public function setUp(): void
-    //    {
-    //
-    //    }
-
     public function testOnConfigGenerate(): void
     {
         $this->client->request('GET', '/s/config/edit');
@@ -24,7 +19,6 @@ class ConfigSubscriberTest extends MauticMysqlTestCase
 
     public function testOnConfigSave(): void
     {
-        //        $this->client->request('POST', '/s/config/edit', ['config[ldapconfig][ldap_auth_host]' => 'ldaps://ldap.example.com']);
         $ldapExample                                       = 'ldaps://ldap.example.com';
         $crawler                                           = $this->client->request('GET', '/s/config/edit');
         $form                                              = $crawler->filter('form[name=config]')->form();

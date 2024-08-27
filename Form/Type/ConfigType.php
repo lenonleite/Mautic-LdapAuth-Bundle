@@ -117,82 +117,6 @@ class ConfigType extends AbstractType
             ]
         );
 
-        // TODO Coming feature: test LDAP connection
-        /*
-        $builder->add(
-            'ldap_auth_test_connection_button',
-            'standalone_button',
-            [
-                'label'       => 'mautic.integration.sso.ldapauth.config.form.test_connection',
-                'required'    => false,
-                'attr'        => [
-                    'class'   => 'btn btn-success',
-                    'onclick' => 'Mautic.testLdapServerConnection()',
-                ],
-            ]
-        );
-        */
-
-        // TODO Coming feature: LDAP bind account and Group lookup
-        /*
-        $builder->add(
-            'ldap_auth_mode',
-            ChoiceType::class,
-            [
-                'choices'     => $this->getAuthenticationChoices(),
-                'label'       => 'mautic.integration.sso.ldapauth.config.form.ldap_authentication',
-                'required'    => false,
-                'attr'        => [
-                    'class'    => 'form-control',
-                    'tooltip'  => 'mautic.integration.sso.ldapauth.config.form.ldap_authentication.tooltip',
-                    'onchange' => 'Mautic.disableTestAuthenticationButton()',
-                ],
-                'empty_value' => false,
-            ]
-        );
-
-        $builder->add(
-            'ldap_auth_bind_dn',
-            TextType::class,
-            [
-                'label'      => 'mautic.integration.sso.ldapauth.config.form.bind_dn',
-                'label_attr' => ['class' => 'control-label'],
-                'attr'       => [
-                    'class' => 'form-control',
-                    'tooltip' => 'mautic.integration.sso.ldapauth.config.form.bind_dn.tooltip',
-                ],
-                'empty_data' => null,
-            ]
-        );
-
-        $builder->add(
-            'ldap_auth_bind_passwd',
-            TextType::class,
-            [
-                'label'      => 'mautic.integration.sso.ldapauth.config.form.bind_passwd',
-                'label_attr' => ['class' => 'control-label'],
-                'attr'       => [
-                    'class' => 'form-control',
-                    'tooltip' => 'mautic.integration.sso.ldapauth.config.form.bind_passwd.tooltip',
-                ],
-                'empty_data' => null,
-            ]
-        );
-
-        $builder->add(
-            'ldap_auth_test_authenticate_button',
-            'standalone_button',
-            [
-                'label'    => 'mautic.integration.sso.ldapauth.config.form.test_authentication',
-                'required' => false,
-                'attr'     => [
-                    'class'   => 'btn btn-info',
-                    'onclick' => 'Mautic.testLdapAuthentication()',
-                ],
-            ]
-        );
-        */
-
         $builder->add(
             'ldap_auth_base_dn',
             TextType::class,
@@ -331,21 +255,4 @@ class ConfigType extends AbstractType
     {
         return 'ldapconfig';
     }
-
-    // TODO Coming feature: LDAP bind account and Group lookup
-    //    /**
-    //     * @return array
-    //     */
-    //    private function getAuthenticationChoices()
-    //    {
-    //        $choices = $this->authenticationType->getAuthenticationTypes();
-    //
-    //        foreach ($choices as $value => $label) {
-    //            $choices[$value] = $this->translator->trans($label);
-    //        }
-    //
-    //        asort($choices, SORT_NATURAL);
-    //
-    //        return $choices;
-    //    }
 }

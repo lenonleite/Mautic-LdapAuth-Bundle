@@ -5,7 +5,6 @@ namespace MauticPlugin\MauticLdapAuthBundle\EventListener;
 use Mautic\ConfigBundle\ConfigEvents;
 use Mautic\ConfigBundle\Event\ConfigBuilderEvent;
 use Mautic\ConfigBundle\Event\ConfigEvent;
-// use Mautic\CoreBundle\EventListener\CommonSubscriber;
 use MauticPlugin\MauticLdapAuthBundle\Form\Type\ConfigType;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
